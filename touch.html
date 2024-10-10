@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, user-scalable=no" />
+<title>Sky Keys</title>
+<style>
+	body {
+		touch-action: none;
+	}
+	#keytable {
+		width:80%;
+		margin: auto;
+	}
+	#keytable div {
+		background: white;
+		border: 2px solid black;
+		width: 80%;
+		aspect-ratio: 1/1;
+		padding: 0em;
+		margin: auto;
+		margin-top: 20%;
+		border-radius: 15%;
+	}
+	#keytable div.touch {
+		background: yellow;
+	}
+	output {
+		display:block;
+	}
+	#keydiv {
+	 display:inline-block;
+	 width: 80%;
+	}
+	#buttondiv {
+	 display:inline-block;
+	 vertical-align: top;
+	 width: 10%;
+	}
+	.button {
+		background: gray;
+		color: white;
+		padding: 3px;
+		width: 1.2em;
+		aspect-ratio: 1/1;
+		text-align: center;
+		font-size: 2em;
+}
+</style>
+<script>
+// Log events flag
+let logEvents = false;
+let sendTimer = null;
+let trainCount = 10;
+
+const keys={
+"k11":"a",//"y",
+"k12":"b",//"u",
+"k13":"c",//"i",
+"k14":"d",//"o",
+"k15":"e",//"p",
+"k21":"f",//"h",
+"k22":"g",//"j",
+"k23":"h",//"k",
+"k24":"i",//"l",
+"k25":"j",//";",
+"k31":"k",//"n",
+"k32":"l",//"m",
+"k33":"m",//",",
+"k34":"n",//".",
+"k35":"o",//"/",
+};
+
+let pressed = [];
+let lastping=0;
+let tl_start=0;
+
+function set_handlers(name) {
+	const el = document.getElementById(name);
+	el.ontouchstart = start_handler;
+	el.ontouchcancel = end_handler;
+	el.ontouchend = end_handler;
+}
+
+function init() {
+	for(const key in keys) {
+		set_handlers(key);
+	}
+	const bt1 = document.getElementById("fullscreen");
+	bt1.onclick = function(event) {
+		if (!document.fullscreenElement) {
+			document.documentElement.requestFullscreen();
+		} else if (document.exitFullscreen) {
+			document.exitFullscreen();
+		}
+	}
+	window.ontouchstart = function(event) {
+		if (event.touches.length>1) { //If there is more than one touch
+				event.preventDefault();
+		}
+	}
+	if(trainCount>0) {
+		sendTimer=setTimeout(send_codes,100);
+	}
+}
+
+function send_codes() {
+	const reqstart=Date.now();
+	if(tl_start==0) {
+		tl_start=reqstart;
+	}
+	let codes=[];
+	let keynames=[];
+	for(i=0; i<pressed.length; i++) {
+		codes.push(pressed[i].join(","));
+		keynames.push(pressed[i][1]);
+	}
+	pressed=[];
+	keystr=encodeURIComponent(codes.join(";"));
+	fetch('send?k='+keystr+"&t="+(reqstart-tl_start)+"&p="+lastping).then(
+		function(resp) {
+			const reqend=Date.now();
+			lastping=reqend-reqstart;
+			document.getElementsByTagName("output")[0].innerText="keys:'"+keynames.join(",")+"' in "+lastping+"ms";
+		}
+	);
+	sendTimer=null;
+	if(trainCount>0) {
+		trainCount--;
+		sendTimer=setTimeout(send_codes,100);
+	}
+	const reqfin=Date.now();
+	console.log("send_codes:"+(reqfin-reqstart)+"ms");
+}
+
+function add_codes(dir,key) {
+	if(tl_start==0) {
+		tl_start=Date.now();
+	}
+	pressed.push([dir,key,Date.now()-tl_start]);
+	if(sendTimer==null) {
+		sendTimer=setTimeout(send_codes,20);
+	}
+}
+
+function start_handler(ev) {
+	ev.preventDefault();
+	add_codes(1,keys[ev.target.id]);
+	//document.getElementsByTagName("output")[0].innerText="keys:"+pressed.join(",");
+	ev.target.className="touch";
+}
+
+function end_handler(ev) {
+	ev.preventDefault();
+	add_codes(0,keys[ev.target.id]);
+	//document.getElementsByTagName("output")[0].innerText="keys:"+pressed.join(",");
+	ev.target.className="";
+}
+//⤡
+</script>
+</head>
+<body onload="init();">
+<div id="buttondiv">
+<div id="fullscreen" class="button">&#x26F6;</div>
+</div>
+<div id="keydiv">
+<table id="keytable">
+<tr><td><div id="k11">&nbsp;</div></td><td><div id="k12">&nbsp;</div></td><td><div id="k13">&nbsp;</div></td><td><div id="k14">&nbsp;</div></td><td><div id="k15">&nbsp;</div></td></tr>
+<tr><td><div id="k21">&nbsp;</div></td><td><div id="k22">&nbsp;</div></td><td><div id="k23">&nbsp;</div></td><td><div id="k24">&nbsp;</div></td><td><div id="k25">&nbsp;</div></td></tr>
+<tr><td><div id="k31">&nbsp;</div></td><td><div id="k32">&nbsp;</div></td><td><div id="k33">&nbsp;</div></td><td><div id="k34">&nbsp;</div></td><td><div id="k35">&nbsp;</div></td></tr>
+</table>
+</div>
+<output></output>
+</body>
+</html>
